@@ -221,8 +221,45 @@ local function recordRestock(hasRare)
     data.lastRestockTime = now
 end
 
+-- =====================
+-- ENHANCED PREDICTIONS
+-- =====================
+local function analyzeTrend()
+    if #data.intervals < 5 then return nil end
+    
+    local recent = {}
+    for i = math.max(1, #data.intervals - 9), #data.intervals do
+        table.insert(recent, data.intervals[i])
+    end
+    
+    local recentAvg = avg(recent)
+    local allAvg = avg(data.intervals)
+    
+    if recentAvg < allAvg * 0.9 then
+        return "📉 Restocks getting faster"
+    elseif recentAvg > allAvg * 1.1 then
+        return "📈 Restocks getting slower"
+    end
+    return nil
+end
+
+local function predictNextRare()
+    if data.totalRestocks < 3 then return nil end
+    
+    local rareRate = data.rareRestocks / data.totalRestocks
+    local restocksUntilRare = math.ceil(1 / rareRate)
+    
+    return {
+        rate = rareRate,
+        untilRare = restocksUntilRare,
+        confidence = data.totalRestocks >= 10
+    }
+end
+
 local function predictionField(stock)
     local lines = {}
+    
+    -- Rare chance percentage
     local prob = data.totalRestocks >= 2
         and round((data.rareRestocks / data.totalRestocks) * 100, 1)
         or nil
@@ -233,7 +270,7 @@ local function predictionField(stock)
         table.insert(lines, "🎲 Rare chance: _collecting data..._")
     end
 
-    -- Use actual UnixNextRestock from seeds (most important shop)
+    -- Next restock times
     local seedNext = stock and stock.seeds and stock.seeds.nextRestock
     if seedNext and seedNext > 0 then
         local remaining = seedNext - os.time()
@@ -246,10 +283,28 @@ local function predictionField(stock)
         table.insert(lines, "⚙️ Gear restock in: **" .. formatTime(remaining) .. "**")
     end
 
+    -- Average interval
+    if #data.intervals > 0 then
+        local avgInterval = avg(data.intervals)
+        table.insert(lines, "⏱️ Avg restock interval: **" .. formatTime(avgInterval) .. "**")
+    end
+
+    -- Trend analysis
+    local trend = analyzeTrend()
+    if trend then
+        table.insert(lines, trend)
+    end
+
+    -- Predict next rare
+    local prediction = predictNextRare()
+    if prediction and prediction.confidence then
+        table.insert(lines, "🎯 Rare ~every **" .. prediction.untilRare .. " restocks**")
+    end
+
     -- Best hours
     local bestHour, bestRate = nil, 0
     for h = 0, 23 do
-        if data.hourlyTotal[h] >= 2 then
+        if data.hourlyTotal[h] >= 3 then
             local rate = data.hourlyRare[h] / data.hourlyTotal[h]
             if rate > bestRate then
                 bestRate = rate
@@ -258,16 +313,17 @@ local function predictionField(stock)
         end
     end
     if bestHour then
-        table.insert(lines, string.format("🏆 Best hour: **%02d:00** (%.0f%% rare rate)", bestHour, bestRate * 100))
+        table.insert(lines, string.format("🏆 Best hour: **%02d:00** (%.0f%% rare)", bestHour, bestRate * 100))
     end
 
+    -- Alert level
     if prob then
         if prob >= 40 then
-            table.insert(lines, "✅ **High rare rate — watch closely!**")
-        elseif prob >= 20 then
-            table.insert(lines, "⚠️ **Moderate — check each restock**")
+            table.insert(lines, "✅ **HIGH RATE — Watch closely!**")
+        elseif prob >= 25 then
+            table.insert(lines, "⚠️ **MODERATE — Check restocks**")
         else
-            table.insert(lines, "😴 **Low rare rate — set alarms**")
+            table.insert(lines, "😴 **LOW RATE — Set alarms**")
         end
     end
 
@@ -292,7 +348,7 @@ end
 local function sendStockReport(stock, isRareAlert)
     sendToDiscord({
         content = isRareAlert and "@everyone 🚨 **RARE ITEMS IN GAG2!**" or "",
-        username = "GAG2 Stock Tracker",
+        username = "BABAE LAGING TAMA",
         embeds = {{
             title = isRareAlert and "⭐ RARE STOCK ALERT!" or "🔄 Shop Restocked",
             color = isRareAlert and 0xFFD700 or 0x57F287,
@@ -337,12 +393,12 @@ end
 -- =====================
 -- MAIN LOOP
 -- =====================
-print("[GAG2] v4 started")
+print("Mr.Prediction started!!")
 
 sendToDiscord({
-    username = "GAG2 Stock Tracker",
+    username = "BABAE LAGING TAMA",
     embeds = {{
-        title = "✅ GAG2 Stock Tracker v4 Online",
+        title = "✅ MR.PREDICTION",
         description = "Now reading directly from **ReplicatedStorage.StockValues**\n\nTracking:\n🌱 Seeds\n⚙️ Gears\n📦 Crates\n⭐ Exclusive\n🔮 Restock predictions",
         color = 0x5865F2,
         footer = {text = "Started " .. os.date("%H:%M:%S")}
