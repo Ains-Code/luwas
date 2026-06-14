@@ -6,6 +6,34 @@ local WEBHOOK_URL = "https://discord.com/api/webhooks/1515704094419980338/XlFD0Y
 local CHECK_INTERVAL = 10
 
 -- =====================
+-- ROLE NOTIFICATIONS
+-- =====================
+local ROLE_IDS = {
+    legendary = "1234567890123456789",   -- Role for LEGENDARY items
+    super = "1234567890123456789",       -- Role for SUPER items
+    seeds = "1234567890123456789",       -- Role for seed restocks
+    gears = "1234567890123456789",       -- Role for gear restocks
+    crates = "1234567890123456789",      -- Role for crate restocks
+    exclusive = "1234567890123456789",   -- Role for exclusive restocks
+}
+
+-- =====================
+-- LEGENDARY & SUPER ITEMS
+-- =====================
+local LEGENDARY_ITEMS = {
+    ["Legendary Sprinkler"] = true,
+    ["Legendary Guild Crate"] = true,
+    ["Epic Guild Crate"] = true,
+    ["Mythic Guild Crate"] = true,
+}
+
+local SUPER_ITEMS = {
+    ["Super Sprinkler"] = true,
+    ["Super Watering Can"] = true,
+    ["Super Guild Crate"] = true,
+}
+
+-- =====================
 -- RARE DEFINITIONS
 -- Items with quantity > 0 get shown, these get @everyone ping
 -- =====================
@@ -137,7 +165,6 @@ local function readAllStock()
         {key = "exclusive", folder = sv:FindFirstChild("ExclusiveShop"), rare = {}, label = "⭐ Exclusive"},
     }
 
-    local hasRare = false
     for _, shop in ipairs(shops) do
         local inStock, outOfStock, nextRestock, lastRestock = readShop(shop.folder, shop.rare)
         result[shop.key] = {
@@ -147,12 +174,8 @@ local function readAllStock()
             nextRestock = nextRestock,
             lastRestock = lastRestock
         }
-        for _, item in ipairs(inStock) do
-            if item.rare then hasRare = true end
-        end
     end
 
-    result.hasRare = hasRare
     return result
 end
 
@@ -345,13 +368,58 @@ local function sendToDiscord(payload)
     if not ok then warn("[GAG2] " .. tostring(err)) else print("[GAG2] Sent ✓") end
 end
 
-local function sendStockReport(stock, isRareAlert)
+local function sendStockReport(stock)
+    local content = ""
+    local hasLegendary = false
+    local hasSuper = false
+    
+    -- Check for legendary and super items
+    for _, shopKey in ipairs({"seeds", "gears", "crates", "exclusive"}) do
+        local shop = stock[shopKey]
+        if shop and shop.inStock then
+            for _, item in ipairs(shop.inStock) do
+                if item.name:find("Legendary") then
+                    hasLegendary = true
+                end
+                if item.name:find("Super") then
+                    hasSuper = true
+                end
+            end
+        end
+    end
+    
+    -- Add role pings based on stock
+    if hasLegendary and hasSuper then
+        content = "<@&" .. ROLE_IDS.legendary .. "> <@&" .. ROLE_IDS.super .. "> 👑 **LEGENDARY & SUPER ITEMS!**"
+    elseif hasLegendary then
+        content = "<@&" .. ROLE_IDS.legendary .. "> 👑 **LEGENDARY ITEM IN STOCK!**"
+    elseif hasSuper then
+        content = "<@&" .. ROLE_IDS.super .. "> ⚡ **SUPER ITEM IN STOCK!**"
+    else
+        local roles = {}
+        if stock.seeds and #stock.seeds.inStock > 0 then
+            table.insert(roles, "<@&" .. ROLE_IDS.seeds .. ">")
+        end
+        if stock.gears and #stock.gears.inStock > 0 then
+            table.insert(roles, "<@&" .. ROLE_IDS.gears .. ">")
+        end
+        if stock.crates and #stock.crates.inStock > 0 then
+            table.insert(roles, "<@&" .. ROLE_IDS.crates .. ">")
+        end
+        if stock.exclusive and #stock.exclusive.inStock > 0 then
+            table.insert(roles, "<@&" .. ROLE_IDS.exclusive .. ">")
+        end
+        if #roles > 0 then
+            content = table.concat(roles, " ") .. " 🔄 Stock Restocked!"
+        end
+    end
+    
     sendToDiscord({
-        content = isRareAlert and "@everyone 🚨 **RARE ITEMS IN GAG2!**" or "",
-        username = "BABAE LAGING TAMA",
+        content = content,
+        username = "GAG2 Stock Tracker",
         embeds = {{
-            title = isRareAlert and "⭐ RARE STOCK ALERT!" or "🔄 Shop Restocked",
-            color = isRareAlert and 0xFFD700 or 0x57F287,
+            title = (hasLegendary or hasSuper) and "👑 PREMIUM ITEM!" or "🔄 Shop Restocked",
+            color = (hasLegendary or hasSuper) and 0xFF6B6B or 0x57F287,
             fields = {
                 {
                     name = stock.seeds.label,
@@ -393,12 +461,12 @@ end
 -- =====================
 -- MAIN LOOP
 -- =====================
-print("Mr.Prediction started!!")
+print("[GAG2] v4 started")
 
 sendToDiscord({
-    username = "BABAE LAGING TAMA",
+    username = "GAG2 Stock Tracker",
     embeds = {{
-        title = "✅ MR.PREDICTION",
+        title = "✅ GAG2 Stock Tracker v4 Online",
         description = "Now reading directly from **ReplicatedStorage.StockValues**\n\nTracking:\n🌱 Seeds\n⚙️ Gears\n📦 Crates\n⭐ Exclusive\n🔮 Restock predictions",
         color = 0x5865F2,
         footer = {text = "Started " .. os.date("%H:%M:%S")}
@@ -412,8 +480,7 @@ while true do
         if hash ~= data.lastHash and hash ~= "" then
             data.lastHash = hash
             recordRestock(stock.hasRare)
-            sendStockReport(stock, stock.hasRare)
-            task.wait(60)
+            sendStockReport(stock)  -- Sends on EVERY restock
         end
     end
     task.wait(CHECK_INTERVAL)
