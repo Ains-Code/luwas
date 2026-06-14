@@ -2,7 +2,7 @@
 -- Reads directly from ReplicatedStorage.StockValues
 -- Accurate stock counts + exact restock timers
 
-local WEBHOOK_URL = "PASTE_YOUR_WEBHOOK_HERE"
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1515704094419980338/XlFD0Y1xCfvEVagK8kznLxcEX4LDNHjyMZws41WU1DjAcm-ZIAh_0WjN0qhBpM5eQWAX"
 local CHECK_INTERVAL = 10
 
 -- =====================
