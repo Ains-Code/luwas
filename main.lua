@@ -2,7 +2,7 @@
 -- Reads directly from ReplicatedStorage.StockValues
 -- Pet spawn notifier + Legendary/Super-only predictions
 -- FIXED: Better pet spawning detection with debugging
--- UPDATED: Accurate GAG2 weather only, Exclusive shop removed
+-- UPDATED: Accurate GAG2 weather only, Exclusive shop excluded from predictions
 
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1515704094419980338/XlFD0Y1xCfvEVagK8kznLxcEX4LDNHjyMZws41WU1DjAcm-ZIAh_0WjN0qhBpM5eQWAX"
 local CHECK_INTERVAL = 10
@@ -506,6 +506,9 @@ local function readAllStock()
     return result
 end
 
+-- =====================
+-- HASH STOCK (Exclusive EXCLUDED)
+-- =====================
 local function hashStock(stock)
     if not stock then return "" end
     local parts = {}
@@ -778,7 +781,7 @@ local function sendStockReport(stock)
         if stock.seeds  and #stock.seeds.inStock  > 0 then table.insert(roles, "<@&" .. ROLE_IDS.seeds  .. ">") end
         if stock.gears  and #stock.gears.inStock  > 0 then table.insert(roles, "<@&" .. ROLE_IDS.gears  .. ">") end
         if stock.crates and #stock.crates.inStock > 0 then table.insert(roles, "<@&" .. ROLE_IDS.crates .. ">") end
-        -- Exclusive gets a ping in Discord but does NOT affect predictions
+        -- Exclusive gets a ping in Discord but does NOT affect predictions or hash
         if stock.exclusive and #stock.exclusive.inStock > 0 then table.insert(roles, "<@&" .. ROLE_IDS.exclusive .. ">") end
         if #roles > 0 then content = table.concat(roles, " ") .. " 🔄 Stock Restocked!" end
     end
@@ -803,7 +806,7 @@ local function sendStockReport(stock)
                 { name = "🔮 Legendary & Super Predictions (Seeds/Gears/Crates only)", value = predictionField(stock), inline = false },
                 { name = "📈 Session", value = "Restocks tracked: **" .. data.totalRestocks .. "**  |  Legendary: **" .. data.legendaryRestocks .. "**  |  Super: **" .. data.superRestocks .. "**", inline = false },
             },
-            footer    = { text = "v5 Fixed • Exclusive excluded from predictions • Weather tracking • " .. os.date("%H:%M:%S") },
+            footer    = { text = "v5 Fixed • Exclusive excluded from predictions • Weather tracking • Pet notifier • " .. os.date("%H:%M:%S") },
             timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
         }}
     })
@@ -812,13 +815,13 @@ end
 -- =====================
 -- MAIN
 -- =====================
-print("[GAG2] v5 FIXED started - Exclusive excluded from predictions, expanded weather")
+print("[GAG2] v5 FIXED started - Exclusive excluded from predictions, weather & pet notifier active")
 
 sendToDiscord({
     username = "GAG2 Stock Tracker",
     embeds   = {{
         title       = "✅ GAG2 Stock Tracker v5 FIXED Online",
-        description = "Reading from **ReplicatedStorage.StockValues**\n\nTracking:\n🌱 Seeds  ⚙️ Gears  📦 Crates  ⭐ Exclusive (display only)\n\n👑 Legendary & Super predictions\n🐾 Pet spawn notifier\n🌤️ Weather events",
+        description = "Reading from **ReplicatedStorage.StockValues**\n\nTracking:\n🌱 Seeds  ⚙️ Gears  📦 Crates  ⭐ Exclusive (display only)\n\n👑 Legendary & Super predictions (Seeds/Gears/Crates only)\n🐾 Pet Spawn Notifier Active\n🌤️ Weather Event Tracker",
         color       = 0x5865F2,
         footer      = { text = "Started " .. os.date("%H:%M:%S") },
     }}
